@@ -1,0 +1,18 @@
+[project]
+name = "tomato-disease-classifier"
+version = "0.1.0"
+description = "a system for detecting tomato diseases with deep learning"
+authors = [
+    {name = "oladimeji balogun",email = "oladimejib.tech@gmail.com"}
+]
+license = {text = "MIT License"}
+readme = "README.md"
+requires-python = ">=3.10,<3.11"
+dependencies = [
+    "scikit-learn (>=1.7.2,<2.0.0)"
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
