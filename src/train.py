@@ -1,7 +1,7 @@
 """
 module for training the models 
 """
-
+from tqdm import tqdm, trange
 from src.model import SimpleTomatoCNN
 from torchmetrics import Accuracy 
 import torch
@@ -13,50 +13,69 @@ from src.configs.paths import SAVED_MODELS_PATH
 # device = "cuda" if torch.cuda.is_available() else "cpu"
 
 class Trainer: 
-    def __init__(self, model:nn.Module, train_loader, val_loader): 
+    def __init__(self, model:nn.Module, train_loader, val_loader, lr=1e-3): 
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.model = model.to(self.device)
         self.train_loader = train_loader
         self.val_loader = val_loader
+        self.optimizer = Adam(params=self.model.parameters(), lr=lr)
+        self.criterion = nn.CrossEntropyLoss()
 
     
-    def train_model(self, epochs=1, lr=1e-1): 
-        optimizer = Adam(params=self.model.parameters(), lr=lr)
-        criterion = nn.CrossEntropyLoss().to(device=self.device)
+    def train_model(self, epochs=1, lr=1e-3): 
+        # optimizer = Adam(params=self.model.parameters(), lr=lr)
+        # criterion = nn.CrossEntropyLoss().to(device=self.device)
 
-        for epoch in range(epochs): 
+        best_acc = 0.0
+
+        for epoch in trange(epochs, desc="Epoch Progress"): 
+            loop = tqdm(self.train_loader, desc=f"training  epoch {epoch + 1} / {epochs}", leave=False)
             self.model.train()
             total_loss = 0
 
-            for images, labels in self.train_loader: 
+            for images, labels in loop: 
                 images = images.to(self.device)
                 labels = labels.to(self.device)
 
-                optimizer.zero_grad()
+                self.optimizer.zero_grad()
                 out = self.model(images)
-                loss = criterion(out, labels)
+                loss = self.criterion(out, labels)
 
                 loss.backward()
-                optimizer.step()
+                self.optimizer.step()
                 total_loss += loss.item()
             # log the training loss
+                loop.set_postfix(loss=loss.item())
+                
+            # print(f"Epoch: {epoch}/{epochs} | Train Loss: {(total_loss / len(self.train_loader)):4f}")
 
-            print(f"Epoch: {epoch}/{epochs} | Train Loss: {(total_loss / len(self.train_loader)):4f}")
+            # validate the performance
+            val_acc = self.validate()
+            print(f"epoch: {epoch} | val-accuracy: {val_acc}")
+            if val_acc > best_acc: 
+                print(f"we have a better validation accruacy: {val_acc}")
 
-        # for the validation 
+                torch.save(self.model.state_dict(), SAVED_MODELS_PATH / "best-cnn.pth")
+
+            
+
+    def validate(self): 
+        correct, total = 0, 0
         self.model.eval()
-        correct, total = 0, 0 
 
         with torch.no_grad(): 
             for images, labels in self.val_loader: 
                 images, labels = images.to(self.device), labels.to(self.device)
-                out = self.model(images)
-                preds = out.argmax(dim=1)
+
+                outputs = self.model(images)
+                preds = outputs.argmax(dim=1)
 
                 correct += (preds == labels).sum().item()
                 total += labels.size(0)
 
-        print(f"Validation Accuracy: {(correct / total):4f}")
+        
+        validation_accuracy = correct / total
+        return validation_accuracy
 
     def save_model(self, path="simple-tomato-cnn.pth"): 
         save_path = SAVED_MODELS_PATH / path

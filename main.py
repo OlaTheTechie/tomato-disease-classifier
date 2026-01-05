@@ -1,5 +1,5 @@
 import torch
-from src.model import SimpleTomatoCNN 
+from src.model import SimpleTomatoCNN, AdvancedTomatoCNN, SimplePretrainedTomatoMobileNet
 from src.dataset import (
     transform, 
     split_dataset, 
@@ -13,6 +13,7 @@ from src.configs import paths
 from src.train import Trainer
 from torch.utils.data import DataLoader
 
+device = "cuda" if torch.cuda.is_available() else "cpu"
 
 
 dataset = load_dataset(folder_path=paths.DATA_DIR, transform=transform)
@@ -42,9 +43,11 @@ val_loader = DataLoader(
     batch_size=32
 )
 
-model = SimpleTomatoCNN(n_classes=10)
 
-# device = "cuda" if torch.cuda.is_available() else "cpu"
+# model = SimpleTomatoCNN(n_classes=10).to(device=device)
+# model = AdvancedTomatoCNN(n_classes=10).to(device=device)
+model = SimplePretrainedTomatoMobileNet(n_classes=10).to(device=device)
+
 
 trainer = Trainer(
     model=model, 
@@ -54,7 +57,7 @@ trainer = Trainer(
 )
 
 # training 
-trainer.train_model(epochs=2, lr=0.1)
+trainer.train_model(epochs=5, lr=0.1)
 
 
 # save model 
