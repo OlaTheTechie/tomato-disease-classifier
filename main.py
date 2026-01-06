@@ -46,7 +46,7 @@ val_loader = DataLoader(
 
 # model = SimpleTomatoCNN(n_classes=10).to(device=device)
 # model = AdvancedTomatoCNN(n_classes=10).to(device=device)
-model = SimplePretrainedTomatoMobileNet(n_classes=10).to(device=device)
+model = SimpleTomatoCNN(n_classes=10).to(device=device)
 
 
 trainer = Trainer(

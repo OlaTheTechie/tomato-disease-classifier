@@ -21,24 +21,39 @@ from src.configs import paths
 from src.dataset import load_dataset, load_preprocessed, transform
 
 class Evalutator: 
-    def __init__(self, model: nn.Module, images: torch.Tensor, labels: torch.Tensor): 
+    def __init__(self, model: nn.Module, val_loader: DataLoader): 
         self.model = model
-        self.images = images 
-        self.labels = labels 
-        self.preds = self.model(self.images).argmax(dim=1)
+        self.val_loader = val_loader
+        self.all_preds = []
+        self.all_labels = []
+
+        self.model.eval()
+        with torch.no_grad(): 
+
+            for images, labels in self.val_loader:
+                preds = self.model(images).argmax(dim=1)
+                self.all_labels.append(labels)
+                self.all_preds.append(preds)
+
+        self.all_labels = torch.cat(self.all_labels).cpu().numpy()
+        self.all_preds = torch.cat(self.all_preds).cpu().numpy()
 
     def get_f1_score(self): 
-        _f1_score = f1_score(self.labels, self.preds)
+
+        _f1_score = f1_score(self.all_labels, self.all_preds, average="macro")
         return _f1_score 
     
     def get_recall_score(self): 
-        return recall_score(self.labels, self.preds)
+
+        return recall_score(self.all_labels, self.all_preds, average="macro")
 
     def get_confusion_matrix(self): 
-        return confusion_matrix(self.labels, self.preds)
+        
+        return confusion_matrix(self.all_labels, self.all_preds)
     
-    def get_precision_score(self, true_val, pred_val): 
-        return precision_score(true_val, pred_val)
+    def get_precision_score(self): 
+        
+        return precision_score(self.all_labels, self.all_preds, average="macro")
 
 
 
@@ -63,12 +78,16 @@ if __name__ == "__main__":
     # image, label = loaded_val_set[0]
     # print(f"image shape: {image.shape} \n target: {label}")
 
-    images = torch.stack([loaded_val_set[i][0] for i in range(len(loaded_val_set))])
-    labels = torch.tensor([loaded_val_set[i][1] for i in range(len(loaded_val_set))])
-
+    val_loader = DataLoader(
+        loaded_val_set, 
+        batch_size=32, 
+        shuffle=False
+    )
     model = SimpleTomatoCNN(n_classes=10)
-    model.eval()
-    evaluator = Evalutator(model=model, images=images, labels=labels)
+    state_dict = torch.load(paths.SAVED_MODELS_PATH / "best-cnn.pth", map_location="cpu")
+    model.load_state_dict(state_dict=state_dict)
+    
+    evaluator = Evalutator(model=model, val_loader=val_loader)
 
     prec_score = evaluator.get_precision_score()
     f1 = evaluator.get_f1_score()
